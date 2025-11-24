@@ -2,30 +2,33 @@ package Cart;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class ProductDetailPage {
 
-    private WebDriver driver;
+    private final WebDriver driver;
+    private final WebDriverWait wait;
 
-    public ProductDetailPage(WebDriver driver) {
+    private final By quantityInput   = By.id("quantity");
+    private final By addToCartButton = By.cssSelector("button.btn.btn-default.cart");
+
+    public ProductDetailPage(WebDriver driver, WebDriverWait wait) {
         this.driver = driver;
+        this.wait = wait;
     }
 
-    // ===== Locators =====
-
-    private By quantityInput = By.id("quantity");
-    // locator الجديد لزرار Add to cart
-    private By addToCartButton = By.cssSelector("button.btn.btn-default.cart");
-
-    // ===== Actions =====
-
-    public void setQuantity(int quantity) {
-        String q = String.valueOf(quantity);
-        driver.findElement(quantityInput).clear();
-        driver.findElement(quantityInput).sendKeys(q);
+    public void setQuantity(int qty) {
+        WebElement input = wait.until(
+                ExpectedConditions.visibilityOfElementLocated(quantityInput));
+        input.clear();
+        input.sendKeys(String.valueOf(qty));
     }
 
     public void clickAddToCart() {
-        driver.findElement(addToCartButton).click();
+        WebElement btn = wait.until(
+                ExpectedConditions.elementToBeClickable(addToCartButton));
+        btn.click();
     }
 }

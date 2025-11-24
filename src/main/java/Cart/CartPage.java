@@ -1,78 +1,118 @@
 package Cart;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.*;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.util.List;
 
 public class CartPage {
 
-    private WebDriver driver;
+    private final WebDriver driver;
+    private final WebDriverWait wait;
 
-    public CartPage(WebDriver driver) {
+    private final By emptyCartMessage =
+            By.xpath("//*[contains(.,'Cart is empty')]");
+
+    private final By firstProductName =
+            By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[2]/h4/a");
+
+    private final By firstProductPrice =
+            By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[3]/p");
+
+    private final By firstProductQuantity =
+            By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[4]/button");
+
+    private final By firstProductTotal =
+            By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[5]/p");
+
+    // أزرار الحذف لكل الصفوف
+    private final By deleteButtons = By.cssSelector("a.cart_quantity_delete");
+
+    // كل الصفوف في جدول الكارت
+    private final By cartRows = By.cssSelector("#cart_info_table tbody tr");
+
+    public CartPage(WebDriver driver, WebDriverWait wait) {
         this.driver = driver;
+        this.wait = wait;
     }
 
-    // ===== Locators =====
-
-    // رسالة الكارت الفاضي
-    private By emptyCartMessage = By.xpath("//*[contains(text(),'Cart is empty')]");
-
-    // أول منتج في جدول الكارت
-    private By firstProductName = By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[2]/h4/a");
-    private By firstProductPrice = By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[3]/p");
-    private By firstProductQuantity = By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[4]/button");
-    private By firstProductTotal = By.xpath("//table[@id='cart_info_table']//tbody/tr[1]/td[5]/p");
-
-    // زر حذف أول منتج
-    private By firstProductDeleteButton = By.cssSelector("a.cart_quantity_delete");
-
-    // ===== Helpers =====
-
-    // نتأكد هل رسالة الكارت الفاضي موجودة ولا لأ
-    public boolean isEmptyCartMessageDisplayed() {
-        return !driver.findElements(emptyCartMessage).isEmpty();
+    private int parsePriceToInt(String text) {
+        String digits = text.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) return 0;
+        return Integer.parseInt(digits);
     }
 
     public String getCurrentUrl() {
         return driver.getCurrentUrl();
     }
 
-    public String getPageTitle() {
-        return driver.getTitle();
+    public boolean isEmptyCartMessageDisplayed() {
+        try {
+            WebElement msg = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(emptyCartMessage));
+            return msg.isDisplayed();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    // بيانات أول منتج (Strings)
     public String getFirstProductName() {
-        return driver.findElement(firstProductName).getText();
+        return wait.until(
+                        ExpectedConditions.visibilityOfElementLocated(firstProductName))
+                .getText().trim();
     }
 
     public String getFirstProductPrice() {
-        return driver.findElement(firstProductPrice).getText();
+        return wait.until(
+                        ExpectedConditions.visibilityOfElementLocated(firstProductPrice))
+                .getText().trim();
+    }
+
+    public int getFirstProductPriceValue() {
+        return parsePriceToInt(getFirstProductPrice());
     }
 
     public int getFirstProductQuantity() {
-        String qtyText = driver.findElement(firstProductQuantity).getText().trim();
-        return Integer.parseInt(qtyText);
+        String q = wait.until(
+                        ExpectedConditions.visibilityOfElementLocated(firstProductQuantity))
+                .getText().trim();
+        return Integer.parseInt(q);
     }
 
     public String getFirstProductTotal() {
-        return driver.findElement(firstProductTotal).getText();
-    }
-
-    // تحويل السعر والـ Total لأرقام علشان نعرف نحسب
-    public int getFirstProductPriceValue() {
-        String priceText = getFirstProductPrice();      // مثال: "Rs. 500"
-        String digits = priceText.replaceAll("[^0-9]", "");
-        return Integer.parseInt(digits);
+        return wait.until(
+                        ExpectedConditions.visibilityOfElementLocated(firstProductTotal))
+                .getText().trim();
     }
 
     public int getFirstProductTotalValue() {
-        String totalText = getFirstProductTotal();      // مثال: "Rs. 1500"
-        String digits = totalText.replaceAll("[^0-9]", "");
-        return Integer.parseInt(digits);
+        return parsePriceToInt(getFirstProductTotal());
     }
 
-    // حذف أول منتج من الكارت
+    // عدد الصفوف في الكارت
+    public int getRowsCount() {
+        List<WebElement> rows = driver.findElements(cartRows);
+        return rows.size();
+    }
+
+    // حذف أول منتج مع معالجة ElementClickInterceptedException
     public void removeFirstProduct() {
-        driver.findElement(firstProductDeleteButton).click();
+        List<WebElement> buttons = driver.findElements(deleteButtons);
+        if (buttons.isEmpty()) {
+            return;
+        }
+
+        WebElement btn = buttons.get(0);
+
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(btn)).click();
+        } catch (ElementClickInterceptedException e) {
+            ((JavascriptExecutor) driver)
+                    .executeScript("arguments[0].click();", btn);
+        }
+
+        // ننتظر لحد ما الصف يختفي من الـ DOM
+        wait.until(ExpectedConditions.stalenessOf(btn));
     }
 }
